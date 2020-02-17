@@ -13,6 +13,9 @@ knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(message = FALSE)
 # Switching on caching to make things faster (don't commit cache files on Github).
 knitr::opts_chunk$set(cache = TRUE)
+
+setwd("C:/Users/Adam/OneDrive/Documents/assignment-3-ad700-bit")
+getwd()
 ```
 
 In this assignment we will explore political interest (*vote6*) and how it changes over time.
@@ -33,7 +36,7 @@ library(data.table)
 
 files <- dir(
              # Select the folder where the files are stored.
-             "[add your path here]",
+             "C:/Users/Adam/OneDrive/Documents/University Academic 2019-20/Classes Term 2/Data Analysis 3/Data/UKDA-6614-tab/tab",
              # Tell R which pattern you want present in the files it will display.
              pattern = "indresp",
              # We want this process to repeat through the entire folder.
@@ -73,7 +76,14 @@ for (i in 1:7) {
 Now we have got the data from all 7 waves in the same data frame **all7** in the wide format. Note that the panel is unbalanced, i.e. we included all people who participated in at least one wave of the survey. Reshape the data to the long format. The resulting data frame should have six columns for six variables.
 
 ```{r}
-Long <- all7 %>%
+require(reshape2)
+
+Long <- all7 %>% melt(id = "pidp",value.name = "value", na.rm = TRUE) %>%
+  separate(variable,
+           into = c("wave", "variable"),
+           sep = "_",
+           fill = "right") %>%
+  dcast(pidp + wave ~ variable)
   ...
 Long
 ```
@@ -84,14 +94,20 @@ Now we want to filter the data keeping only respondents from the original UKHLS 
 
 ```{r}
 Long <- Long %>%
-        filter(...) %>%
-        mutate(sex_dv = ...) %>%
-        mutate(vote6 = ...)
+filter(memorig == 1) %>%
+mutate(sex = recode(sex, '1' = "male", '2' = "female", .default = NA_character_)) %>%
+mutate(vote6 = replace(vote6, vote6 <= "0", NA)) %>%
+mutate(vote6 = replace(vote6, vote6 >= "5", NA))
 
+Long <- na.omit(Long)
+
+x <- ifelse(Long$sex == "female", 1, ifelse(Long$sex == "male", 2, NA))
+
+Long %>%tabulate(bin = x)
+  
 Long %>%
         ...
-Long %>%
-        ...
+## Do not understand why it is not working. Error = the condition has length > 1 and only the first element will be usedError in tabulate(., bin = x) : 'list' object cannot be coerced to type 'integer'. Have searched the internet however can not find a solution.
 
 ```
 
@@ -100,7 +116,9 @@ Long %>%
 Political interest is an ordinal variable, but we will treat it as interval and calculate mean political interest for men and women in each wave.
 
 ```{r}
-meanVote6 <- Long %>%
+meanVote6 <- meanVote6 <- Long %>%
+  group_by(wave, sex) %>%
+  summarise(average = mean(vote6))
         ...
         
 meanVote6
@@ -120,8 +138,11 @@ In the cells of this table you should have mean political interest by sex and wa
 Write a short interpretation of your findings.
 
 ```{r}
-meanVote6 %>%
-        ...
+meanVote6 <- meanVote6 %>% pivot_wider(wave:average, names_from = "wave",
+                                       values_from = "average")
+meanVote6
+
+#It would appear females have a consistantly higher political interest average than men do. In all waves females scored higher than men did. Wave D is most noticable for having the highest overall average in both men and women than any other age. This will likely be as a result of a political event or interaction at the time which would have caused an increase in political intrest. My guess is that this would have been the EU referendum.
 ```
 
 ## Estimate stability of political interest (30 points)
